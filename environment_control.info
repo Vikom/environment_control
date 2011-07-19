@@ -1,1 +1,6 @@
+; $Id$
 name = Environment Control
+description = Help controller for site administrators and developers.
+package = Development
+core = 7.x
+files[] = environment_control.module

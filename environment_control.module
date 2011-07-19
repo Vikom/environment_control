@@ -1,0 +1,155 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Functionality for site administrators and developers.
+ */
+
+define('ENVIRONMENT_CONTROL_CURRENT_IP', $_SERVER['SERVER_ADDR']);
+
+/**
+ * Implements hook_help().
+ */
+function environment_control_help($path, $arg) {
+  switch ($path) {
+    case 'admin/config/development/environment-control':
+      return t('Module that displays current environment for developers and administrators.');
+  }
+}
+
+
+/**
+ * Implements hook_menu().
+ */
+function environment_control_menu() {
+  $items['admin/config/development/environment-control'] = array(
+    'title' => 'Environment Control',
+    'description' => 'Help controller for administrators and developers.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('environment_control_admin_settings_form'),
+    'access arguments' => array('administer environment_control'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'environment_control.admin.inc',
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_page_alter().
+ */
+function environment_control_page_alter(&$page) {
+  $production_ip = variable_get('environment_control_production');
+  if (ENVIRONMENT_CONTROL_CURRENT_IP == $production_ip && !user_access('view environment_control production')) return;
+
+  $page['page_bottom']['environment_control'] = array(
+    '#markup' => environment_control_output(),
+  );
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+function environment_control_permission() {
+  return array(
+    'administer environment_control' => array(
+      'title' => t('Administer Environment Control'),
+      'description' => t('Administer settings for Environment control module.'),
+    ),
+    'view environment_control production' => array(
+      'title' => t('View Environment Control in production'),
+      'description' => t('View Environment Control in production environment.'),
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function environment_control_theme() {
+  return array(
+    'environment_control_content' => array(
+      'variables' => array(
+        'environment' => array(
+          'type' => NULL,
+          'title' => NULL,
+          'ip' => NULL,
+        ),
+      ),
+    ),
+  );
+}
+
+
+/**
+ * Environment Control output.
+ */
+function environment_control_output() {
+  $local_ip = variable_get('environment_control_local');
+  $development_ip = variable_get('environment_control_development');
+  $production_ip = variable_get('environment_control_production');
+
+  if (ENVIRONMENT_CONTROL_CURRENT_IP == $local_ip) {
+    $environment = array(
+      'type' => 'local',
+      'title' => t('Local Environment'),
+      'ip' => $local_ip,
+    );
+  }
+  elseif (ENVIRONMENT_CONTROL_CURRENT_IP == $development_ip) {
+    $environment = array(
+      'type' => 'development',
+      'title' => t('Development Environment'),
+      'ip' => $development_ip,
+    );
+  }
+  elseif (ENVIRONMENT_CONTROL_CURRENT_IP == $production_ip) {
+    $environment = array(
+      'type' => 'production',
+      'title' => t('Production Environment'),
+      'ip' => $production_ip,
+    );
+  }
+
+  if (empty($environment)) return;
+
+  $module_path = drupal_get_path('module', 'environment_control');
+
+  $output = array(
+    '#prefix' => '<div id="environment-control">',
+    'content' => array(
+      '#theme' => 'environment_control_content',
+      '#environment' => $environment,
+    ),
+    '#suffix' => '</div>',
+    '#attached' => array(
+      'css' => array(
+        $module_path . '/environment_control.css',
+      ),
+    ),
+  );
+  
+  return drupal_render($output);
+}
+
+
+/**
+ * Returns HTML the Environment Control content.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - environment: An array containing information about the current environment.
+ */
+function theme_environment_control_content($variables) {
+
+  $output = '<ul class="'. $variables['environment']['type'] .'">';
+  $output .= '<li><h2>'. $variables['environment']['title'] .'</h2></li>';
+  $output .= '<li>'. $variables['environment']['ip'] .'</li>';
+  $output .= '</ul>';
+
+  return $output;
+}
